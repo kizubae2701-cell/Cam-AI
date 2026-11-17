@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCTV AI Monitor - Diskominfo</title>
+<style>
+  :root {
+    --bg: #0a0e16; --surface: #111827; --surface-2: #172034; --line: #243049;
+    --text: #e8edf7; --muted: #8a96b0; --accent: #34e3b0; --accent-ink: #032a1f;
+    --blue: #6aa8ff; --in: #34e3b0; --out: #ffb454; --danger: #ff6b81;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  [hidden] { display: none !important; }
+  body {
+    font: 15px/1.5 "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: var(--text); min-height: 100vh;
+    background: radial-gradient(900px 500px at 85% -10%, #14405a55, transparent), var(--bg);
+  }
+  button, input, select { font: inherit; color: inherit; }
+  .wrap { max-width: 1440px; margin: 0 auto; padding: 20px 24px 56px; }
+
+  /* ---------- top bar ---------- */
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .logo { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), var(--blue)); color: var(--accent-ink); font-size: 20px; font-weight: 800; }
+  .brand h1 { font-size: 20px; letter-spacing: -.01em; }
+  .brand p { color: var(--muted); font-size: 13px; }
+  .top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--out); }
+  .dot.ok { background: var(--in); box-shadow: 0 0 0 4px #34e3b01f; }
+  #clock { font-variant-numeric: tabular-nums; color: var(--text); font-weight: 600; }
+
+  /* ---------- cards ---------- */
+  .card { background: linear-gradient(180deg, var(--surface), #0e1524); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: 0 12px 32px #0006; }
+  .card-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 20px 0; }
+  .card-h h2 { font-size: 16px; }
+  .card-b { padding: 16px 20px 20px; }
+  .muted { color: var(--muted); }
+  .section-h { display: flex; align-items: center; justify-content: space-between; margin: 0 0 12px; }
+  .section-h h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+
+  /* ---------- controls ---------- */
+  .seg { display: inline-flex; background: #0b1120; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  .seg.wrap { flex-wrap: wrap; border-radius: 18px; }
+  .seg button { background: none; border: 0; color: var(--muted); padding: 6px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  .seg button:hover { color: var(--text); }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .btn { border: 1px solid var(--line); background: var(--surface-2); padding: 8px 14px; border-radius: 10px; cursor: pointer; }
+  .btn:hover { border-color: #3a4b70; }
+  .btn:disabled { opacity: .55; cursor: wait; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.danger { color: var(--danger); }
+  .btn.sm { padding: 4px 10px; font-size: 13px; border-radius: 8px; }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  input, select { background: #0b1120; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; min-width: 0; }
+  input:focus, select:focus { border-color: var(--blue); outline: none; }
+  select:disabled { opacity: .5; }
+  label.f { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+
+  /* ---------- stats ---------- */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat { padding: 18px 20px; }
+  .stat .k { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .stat .v { font-size: 42px; font-weight: 700; line-height: 1.1; margin: 6px 0 10px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .stat.in .v { color: var(--in); } .stat.out .v { color: var(--out); } .stat.inside .v { color: var(--blue); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { background: #0b1120; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* ---------- main grid ---------- */
+  .grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr); gap: 20px; margin-bottom: 24px; }
+  .side { display: grid; gap: 20px; align-content: start; }
+  .stage { position: relative; background: #05070b; border-radius: 12px; overflow: hidden; min-height: 300px; border: 1px solid var(--line); }
+  .stage img { display: block; width: 100%; height: auto; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+  .stage.drawing canvas { cursor: crosshair; }
+  .stage-msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); pointer-events: none; }
+  .stage-msg[hidden] { display: none; }
+  .hint { margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .hint b { color: var(--text); }
+
+  .lines-list { display: grid; gap: 8px; margin-top: 12px; }
+  .line-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #0b1120; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px 8px 12px; }
+  .line-row .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .line-row .act { display: flex; gap: 6px; flex-shrink: 0; }
+  .empty { color: var(--muted); font-size: 14px; padding: 12px 0; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-grid .full { grid-column: 1 / -1; }
+  .stepper { display: flex; gap: 6px; }
+  .stepper input { text-align: center; width: 100%; }
+  .stepper button { width: 38px; flex-shrink: 0; }
+
+  /* ---------- log ---------- */
+  .filters { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; padding: 12px 20px 0; }
+  .fgroup { display: grid; gap: 6px; }
+  .fgroup > span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .fgroup[hidden] { display: none; }
+  .table-wrap { max-height: 560px; overflow: auto; margin: 16px 20px 0; border: 1px solid var(--line); border-radius: 12px; }
+  table { width: 100%; border-collapse: collapse; min-width: 860px; }
+  th { position: sticky; top: 0; background: #0f1627; text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 10px 14px; z-index: 1; }
+  td { padding: 10px 14px; border-top: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+  tbody tr:hover { background: #ffffff08; }
+  td.dt .d { font-weight: 600; } td.dt .t { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 10px; font-size: 13px; border: 1px solid var(--line); }
+  .badge.masuk { color: var(--in); border-color: #34e3b04d; background: #34e3b014; }
+  .badge.keluar { color: var(--out); border-color: #ffb4544d; background: #ffb45414; }
+  .plate { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-weight: 700; letter-spacing: .06em; background: #f3f5f9; color: #111; border: 0; border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+  .plate.unk { background: transparent; color: var(--muted); border: 1px dashed #3a4b70; font-weight: 500; }
+  .plate:hover { filter: brightness(.92); }
+  .tag { font-size: 12px; color: var(--muted); }
+  .tag.manual { color: var(--blue); }
+  .tag.id { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; color: var(--blue); }
+  .unknown { color: var(--out); }
+  .log-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 20px 18px; color: var(--muted); font-size: 14px; }
+
+  /* ---------- modal & toast ---------- */
+  dialog { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--text); padding: 0; width: min(420px, calc(100vw - 32px)); box-shadow: 0 30px 80px #000a; }
+  dialog::backdrop { background: #02050bb3; backdrop-filter: blur(3px); }
+  dialog form { padding: 22px; display: grid; gap: 14px; }
+  dialog h3 { font-size: 18px; }
+  dialog .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+  #toasts { position: fixed; right: 20px; bottom: 20px; display: grid; gap: 10px; z-index: 60; }
+  .toast { background: var(--surface-2); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px; padding: 10px 16px; box-shadow: 0 10px 30px #0008; max-width: 360px; }
+  .toast.err { border-left-color: var(--danger); }
+
+  /* ---------- pengaturan (panel samping) ---------- */
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(480px, 100vw); z-index: 40; display: flex; flex-direction: column;
+    background: var(--surface); border-left: 1px solid var(--line); box-shadow: -24px 0 60px #000a; }
+  .drawer[hidden] { display: none; }
+  .drawer-h { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+  .drawer-h h2 { font-size: 17px; }
+  .drawer-tabs { padding: 12px 20px 0; overflow-x: auto; }
+  .drawer-b { padding: 16px 20px 32px; overflow-y: auto; flex: 1; }
+  .tab { display: grid; gap: 16px; align-content: start; }
+  .tab[hidden] { display: none; }
+  .fblock { display: grid; gap: 10px; }
+  .lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .opt-grid { display: grid; gap: 8px; }
+  .opt { text-align: left; background: #0b1120; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; cursor: pointer; display: grid; gap: 2px; }
+  .opt:hover { border-color: #3a4b70; }
+  .opt small { color: var(--muted); font-size: 13px; line-height: 1.35; }
+  .opt[aria-pressed="true"] { border-color: var(--accent); background: #34e3b014; }
+  .note { font-size: 13px; color: var(--muted); line-height: 1.45; }
+  .note b { color: var(--text); }
+  .note.ok { color: var(--in); }
+  .note.err { color: var(--danger); }
+  .inline { display: flex; gap: 8px; }
+  .inline select { flex: 1; }
+  .row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .check input { width: auto; }
+  input[type="range"] { padding: 0; accent-color: var(--accent); border: 0; background: none; }
+  .range-row { display: grid; grid-template-columns: 1fr 28px; gap: 10px; align-items: center; }
+  .range-row output { font-variant-numeric: tabular-nums; color: var(--text); text-align: right; }
+  .sys { display: grid; gap: 6px; }
+  .sys > div { display: flex; justify-content: space-between; gap: 12px; background: #0b1120; border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; font-size: 13px; }
+  .sys span { color: var(--muted); } .sys b { text-align: right; font-weight: 600; }
+
+  @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .stats { grid-template-columns: 1fr; } .wrap { padding: 16px 14px 48px; } .stat .v { font-size: 36px; } }
+  @media (prefers-reduced-motion: no-preference) { .toast { animation: pop .18s ease-out; } @keyframes pop { from { transform: translateY(8px); opacity: 0; } } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">◉</div>
+      <div>
+        <h1>CCTV AI Monitor</h1>
+        <p>Pemantauan kendaraan &amp; wajah · Diskominfo</p>
+      </div>
+    </div>
+    <div class="top-right">
+      <span class="pill" id="pill-camera"><span class="dot" id="dot-camera"></span><span id="txt-camera">Menghubungkan…</span></span>
+      <span class="pill" id="pill-ocr" title="">OCR plat: <b id="txt-ocr">…</b></span>
+      <span class="pill"><time id="clock">--:--:--</time></span>
+      <button class="btn" id="btn-settings" type="button" aria-controls="drawer">⚙ Pengaturan</button>
+    </div>
+  </header>
+
+  <!-- ============ RINGKASAN ============ -->
+  <div class="section-h">
+    <h2>Ringkasan</h2>
+    <div class="seg" id="seg-scope" role="group" aria-label="Rentang statistik">
+      <button type="button" data-value="today" aria-pressed="true">Hari ini</button>
+      <button type="button" data-value="all" aria-pressed="false">Semua</button>
+    </div>
+  </div>
+  <section class="stats" aria-live="polite">
+    <div class="card stat in">
+      <div class="k">Kendaraan masuk</div>
+      <div class="v" id="s-masuk">0</div>
+      <div class="chips"><span class="chip">🚗 <span id="s-masuk-mobil">0</span></span><span class="chip">🏍️ <span id="s-masuk-motor">0</span></span><span class="chip">✍️ manual <span id="s-manual">0</span></span></div>
+    </div>
+    <div class="card stat out">
+      <div class="k">Kendaraan keluar</div>
+      <div class="v" id="s-keluar">0</div>
+      <div class="chips"><span class="chip">🚗 <span id="s-keluar-mobil">0</span></span><span class="chip">🏍️ <span id="s-keluar-motor">0</span></span></div>
+    </div>
+    <div class="card stat inside">
+      <div class="k">Masih di dalam</div>
+      <div class="v" id="s-dalam">0</div>
+      <div class="chips"><span class="chip">🚗 <span id="s-dalam-mobil">0</span></span><span class="chip">🏍️ <span id="s-dalam-motor">0</span></span></div>
+    </div>
+    <div class="card stat">
+      <div class="k">Orang terdeteksi</div>
+      <div class="v" id="s-orang">0</div>
+      <div class="chips"><span class="chip">dikenal <span id="s-dikenal">0</span></span><span class="chip">unknown <span id="s-unknown">0</span></span></div>
+    </div>
+  </section>
+
+  <!-- ============ KAMERA + SAMPING ============ -->
+  <section class="grid">
+    <div class="card">
+      <div class="card-h">
+        <h2>Kamera langsung</h2>
+        <div class="seg" id="seg-mode" role="group" aria-label="Mode klik">
+          <button type="button" data-value="face" aria-pressed="true">Registrasi wajah</button>
+          <button type="button" data-value="line" aria-pressed="false">Gambar garis</button>
+        </div>
+      </div>
+      <div class="card-b">
+        <div class="stage" id="stage">
+          <img id="feed" src="/video_feed" alt="Siaran langsung kamera">
+          <canvas id="overlay"></canvas>
+          <div class="stage-msg" id="stage-msg"><span id="stage-msg-text">Menunggu kamera…</span></div>
+        </div>
+        <p class="hint" id="hint"></p>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="card">
+        <div class="card-h"><h2>Input jumlah manual</h2></div>
+        <div class="card-b">
+          <form id="manual-form" class="form-grid">
+            <label class="f">Jenis
+              <select name="vehicle_type"><option>Mobil</option><option>Motor</option></select>
+            </label>
+            <div class="f">Arah
+              <div class="seg" id="seg-manual-dir" role="group" aria-label="Arah">
+                <button type="button" data-value="masuk" aria-pressed="true">Masuk</button>
+                <button type="button" data-value="keluar" aria-pressed="false">Keluar</button>
+              </div>
+            </div>
+            <label class="f full">Jumlah kendaraan
+              <div class="stepper">
+                <button type="button" class="btn" id="cnt-minus" aria-label="Kurangi">−</button>
+                <input type="number" name="count" min="1" max="9999" value="1" required>
+                <button type="button" class="btn" id="cnt-plus" aria-label="Tambah">+</button>
+              </div>
+            </label>
+            <label class="f">Plat (opsional)
+              <input type="text" name="plate" maxlength="12" placeholder="B 1234 ABC" autocomplete="off">
+            </label>
+            <label class="f">Catatan (opsional)
+              <input type="text" name="note" maxlength="200" autocomplete="off">
+            </label>
+            <button class="btn primary full" type="submit">Simpan ke log</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Wajah terdaftar</h2></div>
+        <div class="card-b">
+          <p class="muted" style="font-size:13px">Untuk menambah, pilih mode <b style="color:var(--text)">Registrasi wajah</b> lalu klik wajah di video. Mendaftarkan nama yang sama dari sudut berbeda menambah contoh dan meningkatkan akurasi.</p>
+          <div class="lines-list" id="faces-list"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Garis masuk / keluar</h2></div>
+        <div class="card-b">
+          <p class="muted" style="font-size:13px">Pilih mode <b style="color:var(--text)">Gambar garis</b>, lalu klik dua titik di video. Panah di video menunjukkan arah <b style="color:var(--text)">MASUK</b>; lintasan sebaliknya dihitung keluar.</p>
+          <div class="lines-list" id="lines-list"></div>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <!-- ============ LOG ============ -->
+  <section class="card">
+    <div class="card-h">
+      <h2>Riwayat log</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label class="tag" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="auto" checked> Perbarui otomatis</label>
+        <button class="btn sm danger" id="clear-log" hidden></button>
+        <a class="btn sm" id="export" href="/api/events.csv" style="text-decoration:none">⬇ Ekspor CSV</a>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="fgroup"><span>Tampilkan</span>
+        <div class="seg" data-key="category" role="group">
+          <button type="button" data-value="all" aria-pressed="true">Umum</button>
+          <button type="button" data-value="vehicle" aria-pressed="false">Kendaraan</button>
+          <button type="button" data-value="person" aria-pressed="false">Orang</button>
+        </div>
+      </div>
+      <div class="fgroup" id="g-vtype" hidden><span>Jenis</span>
+        <div class="seg" data-key="vehicle_type" role="group">
+          <button type="button" data-value="all" aria-pressed="true">Semua</button>
+          <button type="button" data-value="Mobil" aria-pressed="false">Mobil</button>
+          <button type="button" data-value="Motor" aria-pressed="false">Motor</button>
+        </div>
+      </div>
+      <div class="fgroup" id="g-dir"><span>Arah</span>
+        <div class="seg" data-key="direction" role="group">
+          <button type="button" data-value="all" aria-pressed="true">Semua</button>
+          <button type="button" data-value="masuk" aria-pressed="false">Masuk</button>
+          <button type="button" data-value="keluar" aria-pressed="false">Keluar</button>
+        </div>
+      </div>
+      <div class="fgroup"><span>Urutan waktu</span>
+        <div class="seg" data-key="sort" role="group">
+          <button type="button" data-value="newest" aria-pressed="true">Terbaru</button>
+          <button type="button" data-value="oldest" aria-pressed="false">Terlama</button>
+        </div>
+      </div>
+      <div class="fgroup"><span>Dari</span><input type="date" id="f-from"></div>
+      <div class="fgroup"><span>Sampai</span><input type="date" id="f-to"></div>
+      <div class="fgroup" style="flex:1;min-width:180px"><span>Cari</span><input type="search" id="f-search" placeholder="Plat, nama, ID (mis. 12), garis, catatan…"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Waktu</th><th>Tipe</th><th>Jenis / Nama</th><th>Arah</th><th>Plat nomor</th><th>Garis</th><th>Sumber</th><th aria-label="Aksi"></th>
+        </tr></thead>
+        <tbody id="log-body"></tbody>
+      </table>
+    </div>
+    <div class="log-foot">
+      <span id="log-count">–</span>
+      <button class="btn sm" id="more" hidden>Muat lebih banyak</button>
+    </div>
+  </section>
+</div>
+
+<!-- ============ PENGATURAN ============ -->
+<aside class="drawer" id="drawer" hidden aria-label="Pengaturan">
+  <div class="drawer-h">
+    <h2>⚙ Pengaturan</h2>
+    <button class="btn sm" id="drawer-close" type="button" aria-label="Tutup pengaturan">✕</button>
+  </div>
+  <div class="drawer-tabs">
+    <div class="seg" id="seg-tab" role="group" aria-label="Menu pengaturan">
+      <button type="button" data-value="camera" aria-pressed="true">Kamera</button>
+      <button type="button" data-value="quality" aria-pressed="false">Kualitas</button>
+      <button type="button" data-value="device" aria-pressed="false">Perangkat</button>
+      <button type="button" data-value="view" aria-pressed="false">Tampilan</button>
+    </div>
+  </div>
+
+  <div class="drawer-b">
+
+    <!-- ---------- KAMERA ---------- -->
+    <section class="tab" id="tab-camera">
+      <p class="note" id="cur-camera">Sumber saat ini: –</p>
+
+      <div class="fblock">
+        <span class="lbl">Jenis sambungan</span>
+        <div class="opt-grid">
+          <button type="button" class="opt" data-cam-type="usb" aria-pressed="true">
+            <b>Webcam / USB</b>
+            <small>Webcam laptop, kamera USB eksternal, capture card (kamera coaxial lewat DVR), atau HP sebagai webcam (Iriun / DroidCam USB).</small>
+          </button>
+          <button type="button" class="opt" data-cam-type="ip" aria-pressed="false">
+            <b>Kamera IP (LAN / Wi-Fi)</b>
+            <small>CCTV IP, NVR/DVR (RTSP), atau kamera HP lewat IP Webcam / DroidCam.</small>
+          </button>
+        </div>
+      </div>
+
+      <div class="fblock" id="cam-usb">
+        <label class="f">Nomor kamera (port)
+          <div class="inline">
+            <select id="cam-index"></select>
+            <button type="button" class="btn sm" id="cam-scan">Pindai kamera</button>
+          </div>
+        </label>
+        <label class="f" id="cam-backend-wrap">Metode pembacaan (Windows)
+          <select id="cam-backend">
+            <option value="auto">Otomatis</option>
+            <option value="dshow">DirectShow</option>
+            <option value="msmf">Media Foundation</option>
+          </select>
+        </label>
+        <p class="note">Nomor 0 biasanya webcam bawaan; kamera USB eksternal biasanya nomor 1 atau 2. Kamera <b>coaxial (analog)</b> tidak punya alamat IP: sambungkan ke USB video capture card lalu pilih nomornya di sini, atau pakai alamat RTSP milik DVR lewat <b>Kamera IP</b>.</p>
+      </div>
+
+      <div class="fblock" id="cam-ip" hidden>
+        <label class="f">Jenis kamera / merek
+          <select id="cam-brand"></select>
+        </label>
+        <label class="f">Alamat: IP kamera, atau tempel link lengkap
+          <input id="cam-address" type="text" maxlength="300" autocomplete="off" spellcheck="false"
+                 placeholder="192.168.1.10  atau  rtsp://user:pass@192.168.1.10:554/stream1">
+        </label>
+        <div class="form-grid">
+          <label class="f">Protokol
+            <select id="cam-scheme">
+              <option value="rtsp">rtsp</option><option value="http">http</option><option value="https">https</option>
+              <option value="rtsps">rtsps</option><option value="rtmp">rtmp</option>
+            </select>
+          </label>
+          <label class="f">Port
+            <input id="cam-port" type="number" min="0" max="65535" placeholder="554">
+          </label>
+          <label class="f full">Path stream
+            <input id="cam-path" type="text" maxlength="300" autocomplete="off" spellcheck="false" placeholder="/Streaming/Channels/102">
+          </label>
+          <label class="f">Username
+            <input id="cam-user" type="text" maxlength="100" autocomplete="off" spellcheck="false">
+          </label>
+          <label class="f">Password
+            <input id="cam-pass" type="password" maxlength="200" autocomplete="new-password">
+          </label>
+        </div>
+        <label class="check"><input type="checkbox" id="cam-nopass"> Hapus password tersimpan (kamera tanpa password)</label>
+        <p class="note">Jika link lengkap berisi <b>user:password</b>, bagian itu dipindahkan ke kolom username/password dan tidak ditampilkan lagi. Password disimpan sebagai teks biasa di <b>cctv_log.db</b>, jadi jaga file tersebut. Gunakan sub-stream (resolusi lebih kecil) agar tidak berat.</p>
+      </div>
+
+      <div class="row-actions">
+        <button type="button" class="btn" id="cam-test">Uji koneksi</button>
+        <button type="button" class="btn primary" id="cam-save">Simpan &amp; hubungkan</button>
+      </div>
+      <p class="note" id="cam-result" aria-live="polite"></p>
+    </section>
+
+    <!-- ---------- KUALITAS ---------- -->
+    <section class="tab" id="tab-quality" hidden>
+      <p class="note" id="cur-quality">–</p>
+
+      <div class="fblock">
+        <span class="lbl">Preset</span>
+        <div class="seg wrap" id="seg-preset" role="group" aria-label="Preset kualitas">
+          <button type="button" data-value="auto" aria-pressed="false">Otomatis</button>
+          <button type="button" data-value="hemat" aria-pressed="false">Hemat</button>
+          <button type="button" data-value="seimbang" aria-pressed="true">Seimbang</button>
+          <button type="button" data-value="akurat" aria-pressed="false">Akurat</button>
+          <button type="button" data-value="kustom" aria-pressed="false">Kustom</button>
+        </div>
+        <p class="note" id="q-auto-note" hidden><b>Otomatis:</b> program menaikkan atau menurunkan ukuran proses kendaraan dan frekuensi deteksi wajah sendiri sesuai beban komputer. Resolusi, FPS, dan sensitivitas tetap mengikuti pilihan di bawah.</p>
+      </div>
+
+      <div class="form-grid">
+        <label class="f">Resolusi <select id="q-res"></select></label>
+        <label class="f">FPS kamera <select id="q-fps"></select></label>
+        <label class="f">Ukuran proses kendaraan <select id="q-yolo"></select></label>
+        <label class="f">Deteksi wajah <select id="q-face"></select></label>
+      </div>
+
+      <div class="fblock">
+        <label class="f">Sensitivitas kendaraan
+          <span class="range-row"><input type="range" id="q-vsens" min="1" max="10" step="1"><output id="o-vsens"></output></span>
+        </label>
+        <label class="f">Sensitivitas wajah
+          <span class="range-row"><input type="range" id="q-fsens" min="1" max="10" step="1"><output id="o-fsens"></output></span>
+        </label>
+        <label class="f">Kelonggaran pengenalan nama
+          <span class="range-row"><input type="range" id="q-match" min="1" max="10" step="1"><output id="o-match"></output></span>
+        </label>
+        <p class="note">Sensitivitas tinggi menangkap lebih banyak objek (termasuk yang kecil/samar) tetapi lebih banyak salah deteksi. Kelonggaran pengenalan tinggi membuat nama lebih mudah cocok, dengan risiko salah nama; turunkan jika ada orang yang salah dikenali.</p>
+      </div>
+
+      <div class="row-actions">
+        <button type="button" class="btn primary" id="q-apply">Terapkan</button>
+      </div>
+      <p class="note">Mengubah resolusi atau FPS membuka ulang kamera sebentar. Untuk kamera IP, resolusi/FPS asli ditentukan kamera; di sini video diperkecil atau dibatasi di sisi aplikasi.</p>
+    </section>
+
+    <!-- ---------- PERANGKAT ---------- -->
+    <section class="tab" id="tab-device" hidden>
+      <p class="note" id="cur-device">–</p>
+      <div class="opt-grid">
+        <button type="button" class="opt" data-device="auto" aria-pressed="true"><b>Otomatis</b><small>Pakai GPU NVIDIA jika ada, selain itu CPU.</small></button>
+        <button type="button" class="opt" data-device="cpu" aria-pressed="false"><b>CPU</b><small>Selalu memakai prosesor. Paling kompatibel.</small></button>
+        <button type="button" class="opt" data-device="gpu" aria-pressed="false"><b>GPU (NVIDIA CUDA)</b><small>Lebih cepat untuk deteksi kendaraan. Jika GPU tidak tersedia, otomatis memakai CPU.</small></button>
+      </div>
+      <div class="sys" id="sys-info"></div>
+    </section>
+
+    <!-- ---------- TAMPILAN ---------- -->
+    <section class="tab" id="tab-view" hidden>
+      <p class="note">Hanya mengubah gambar siaran agar mudah dibaca. <b>Semua deteksi dan pencatatan tetap berjalan</b> di mode apa pun.</p>
+      <div class="opt-grid">
+        <button type="button" class="opt" data-view="parkir" aria-pressed="false"><b>Parkir</b><small>Garis masuk/keluar, serta kotak dan ID kendaraan.</small></button>
+        <button type="button" class="opt" data-view="wajah" aria-pressed="false"><b>Wajah</b><small>Kotak, ID, dan nama wajah.</small></button>
+        <button type="button" class="opt" data-view="semua" aria-pressed="true"><b>Semua</b><small>Parkir dan wajah sekaligus.</small></button>
+        <button type="button" class="opt" data-view="bersih" aria-pressed="false"><b>Bersih</b><small>Video asli tanpa tambahan apa pun.</small></button>
+      </div>
+    </section>
+
+  </div>
+</aside>
+
+<dialog id="modal">
+  <form method="dialog" id="modal-form">
+    <h3 id="modal-title"></h3>
+    <p class="muted" id="modal-desc" style="font-size:14px"></p>
+    <div id="modal-fields" style="display:grid;gap:12px"></div>
+    <div class="row">
+      <button class="btn" value="cancel" formnovalidate>Batal</button>
+      <button class="btn primary" value="ok" id="modal-ok">Simpan</button>
+    </div>
+  </form>
+</dialog>
+<div id="toasts" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+
+  // status pengaturan (diisi dari server)
+  let S = null, CH = null, PRESETS = null;
+  let qPreset = 'seimbang', camType = 'usb', activeTab = 'camera';
+
+  // ---------------------------------------------------------------- util
+  async function api(path, opts = {}) {
+    const res = await fetch(path, opts);
+    let data = null;
+    try { data = await res.json(); } catch (_) {}
+    if (!res.ok) {
+      let msg = data && (data.detail || data.message);
+      if (Array.isArray(msg)) msg = msg.map(m => m.msg).join(', ');
+      throw new Error(msg || `Error ${res.status}`);
+    }
+    return data;
+  }
+  const sendJSON = (method, path, body) =>
+    api(path, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+
+  function toast(msg, isErr = false) {
+    const el = document.createElement('div');
+    el.className = 'toast' + (isErr ? ' err' : '');
+    el.textContent = msg;
+    $('#toasts').appendChild(el);
+    setTimeout(() => el.remove(), isErr ? 5000 : 3200);
+  }
+
+  function askModal({ title, desc = '', fields = [], confirmText = 'Simpan', danger = false }) {
+    return new Promise(resolve => {
+      const dlg = $('#modal'), form = $('#modal-form');
+      $('#modal-title').textContent = title;
+      $('#modal-desc').textContent = desc;
+      const box = $('#modal-fields');
+      box.innerHTML = '';
+      fields.forEach(f => {
+        const lab = document.createElement('label');
+        lab.className = 'f';
+        lab.textContent = f.label;
+        const inp = document.createElement('input');
+        inp.name = f.id; inp.value = f.value ?? ''; inp.type = f.type || 'text';
+        if (f.placeholder) inp.placeholder = f.placeholder;
+        if (f.maxLength) inp.maxLength = f.maxLength;
+        if (f.required) inp.required = true;
+        inp.autocomplete = 'off';
+        lab.appendChild(inp);
+        box.appendChild(lab);
+      });
+      const ok = $('#modal-ok');
+      ok.textContent = confirmText;
+      ok.classList.toggle('danger', danger);
+      ok.classList.toggle('primary', !danger);
+      const onClose = () => {
+        dlg.removeEventListener('close', onClose);
+        if (dlg.returnValue === 'ok') {
+          resolve(Object.fromEntries(fields.map(f => [f.id, form.elements[f.id].value])));
+        } else resolve(null);
+      };
+      dlg.addEventListener('close', onClose);
+      dlg.returnValue = '';
+      dlg.showModal();
+      const first = box.querySelector('input');
+      if (first) { first.focus(); first.select(); }
+    });
+  }
+
+  function segGroup(root, onChange) {
+    root.addEventListener('click', e => {
+      const b = e.target.closest('button[data-value]');
+      if (!b || !root.contains(b)) return;
+      $$('button', root).forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      onChange(b.dataset.value);
+    });
+  }
+  const setSeg = (root, value) => $$('button', root).forEach(x => x.setAttribute('aria-pressed', String(x.dataset.value === value)));
+  const fillSelect = (sel, pairs, current) => {
+    sel.innerHTML = pairs.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
+    if (current !== undefined) sel.value = String(current);
+  };
+
+  // ---------------------------------------------------------------- jam & status
+  setInterval(() => { $('#clock').textContent = new Date().toLocaleTimeString('id-ID', { hour12: false }); }, 1000);
+
+  const OCR_TEXT = { ready: 'aktif', loading: 'memuat…', idle: 'memuat…', missing: 'belum terpasang', error: 'gagal dimuat' };
+  async function refreshStatus() {
+    try {
+      const s = await api('/api/status');
+      $('#dot-camera').classList.toggle('ok', s.active);
+      let txt = s.camera;
+      if (s.active) {
+        txt += ` · video ${s.fps_video} fps`;
+        txt += s.detector === 'aktif' ? ` · deteksi ${s.fps_detect} fps` : ` · deteksi: ${s.detector}`;
+      }
+      $('#txt-camera').textContent = txt;
+      $('#stage-msg').hidden = s.active;
+      $('#stage-msg-text').textContent = s.camera;
+      $('#txt-ocr').textContent = OCR_TEXT[s.plate_ocr] || s.plate_ocr;
+      $('#pill-ocr').title = s.plate_ocr === 'missing' ? 'Jalankan: pip install easyocr  — tanpa ini plat dicatat ???' : '';
+
+      // info "saat ini" di panel Pengaturan
+      $('#cur-camera').textContent = 'Sumber saat ini: ' + (s.active && s.source ? s.source : (S ? S.camera.display : '–')) + (s.active ? '' : ' (belum terhubung)');
+      if (s.quality) {
+        $('#cur-quality').textContent = `Saat ini: video ${s.fps_video} FPS · YOLO ${s.quality.imgsz}px · wajah tiap ${s.quality.face_every} siklus${s.quality.auto ? ' (diatur otomatis)' : ''} · ${s.quality.proc_ms} ms/siklus deteksi`;
+      }
+      $('#cur-device').textContent = `Memproses dengan: ${s.device}${s.device_note ? ' — ' + s.device_note : ''}`;
+    } catch (_) {
+      $('#dot-camera').classList.remove('ok');
+      $('#txt-camera').textContent = 'Server tidak terjangkau';
+    }
+  }
+
+  // ---------------------------------------------------------------- statistik
+  let scope = 'today';
+  segGroup($('#seg-scope'), v => { scope = v; refreshStats(); });
+  const setText = (id, v) => { $(id).textContent = v; };
+  async function refreshStats() {
+    try {
+      const s = await api('/api/stats?scope=' + scope);
+      setText('#s-masuk', s.masuk.total); setText('#s-masuk-mobil', s.masuk.Mobil); setText('#s-masuk-motor', s.masuk.Motor);
+      setText('#s-keluar', s.keluar.total); setText('#s-keluar-mobil', s.keluar.Mobil); setText('#s-keluar-motor', s.keluar.Motor);
+      setText('#s-dalam', s.di_dalam.total); setText('#s-dalam-mobil', s.di_dalam.Mobil); setText('#s-dalam-motor', s.di_dalam.Motor);
+      setText('#s-manual', s.manual_masuk);
+      setText('#s-orang', s.orang.total); setText('#s-dikenal', s.orang.dikenal); setText('#s-unknown', s.orang.unknown);
+    } catch (_) {}
+  }
+
+  // ---------------------------------------------------------------- kamera: wajah & garis
+  const stage = $('#stage'), canvas = $('#overlay'), ctx = canvas.getContext('2d');
+  let mode = 'face', draft = [], hover = null, lines = [];
+  const HINTS = {
+    face: 'Klik tepat pada kotak wajah di video untuk mendaftarkan atau menambah nama. Kotak hijau = dikenal, abu-abu = Unknown. Angka #ID adalah nomor pelacakan sementara.',
+    line: 'Klik <b>titik awal</b> lalu <b>titik akhir</b> garis di video. Tekan <b>Esc</b> untuk membatalkan.'
+  };
+  function updateHint() {
+    let h = HINTS[mode];
+    const view = S ? S.view : 'semua';
+    if (mode === 'face' && view !== 'wajah' && view !== 'semua') {
+      h += ' <b>Catatan:</b> mode tampilan sekarang menyembunyikan kotak wajah; klik tetap bekerja di posisi wajah.';
+    }
+    if (mode === 'line' && view !== 'parkir' && view !== 'semua') {
+      h += ' <b>Catatan:</b> mode tampilan sekarang menyembunyikan garis; ganti ke Parkir atau Semua di Pengaturan untuk melihatnya.';
+    }
+    $('#hint').innerHTML = h;
+  }
+  function setMode(m) {
+    mode = m; draft = []; hover = null;
+    setSeg($('#seg-mode'), m);
+    stage.classList.toggle('drawing', m === 'line');
+    updateHint();
+    redraw();
+  }
+  segGroup($('#seg-mode'), setMode);
+  setMode('face');
+
+  function redraw() {
+    const r = stage.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    const W = Math.round(r.width * dpr), H = Math.round(r.height * dpr);
+    if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, r.width, r.height);
+    if (mode !== 'line') return;
+    const pts = draft.map(p => [p.x * r.width, p.y * r.height]);
+    if (hover && draft.length === 1) pts.push([hover.x * r.width, hover.y * r.height]);
+    ctx.strokeStyle = '#34e3b0'; ctx.fillStyle = '#34e3b0'; ctx.lineWidth = 2; ctx.setLineDash([8, 6]);
+    if (pts.length === 2) { ctx.beginPath(); ctx.moveTo(...pts[0]); ctx.lineTo(...pts[1]); ctx.stroke(); }
+    ctx.setLineDash([]);
+    pts.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 5, 0, 7); ctx.fill(); });
+  }
+  new ResizeObserver(redraw).observe(stage);
+  $('#feed').addEventListener('load', redraw);
+
+  const norm = e => {
+    const r = canvas.getBoundingClientRect();
+    return { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) };
+  };
+  canvas.addEventListener('mousemove', e => { if (mode === 'line' && draft.length === 1) { hover = norm(e); redraw(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && mode === 'line' && draft.length) { draft = []; hover = null; redraw(); } });
+
+  canvas.addEventListener('click', async e => {
+    const p = norm(e);
+    if (mode === 'face') return registerFace(p);
+    if (draft.length >= 2) return;
+    draft.push(p); redraw();
+    if (draft.length === 2) {
+      const [a, b] = draft;
+      const res = await askModal({
+        title: 'Simpan garis', desc: 'Beri nama garis ini (mis. Gerbang Utama). Arah MASUK dapat dibalik setelah disimpan.',
+        fields: [{ id: 'name', label: 'Nama garis', value: `Garis ${lines.length + 1}`, required: true, maxLength: 40 }]
+      });
+      draft = []; hover = null; redraw();
+      if (!res || !res.name.trim()) return;
+      try {
+        await sendJSON('POST', '/api/lines', { name: res.name.trim(), x1: a.x, y1: a.y, x2: b.x, y2: b.y });
+        toast('Garis disimpan. Cek panah MASUK di video; gunakan "Balik arah" jika terbalik.');
+        loadLines();
+      } catch (err) { toast(err.message, true); }
+    }
+  });
+
+  async function registerFace(p) {
+    try {
+      const f = await api(`/api/face_at?x=${p.x}&y=${p.y}`);
+      if (!f.found) return toast('Klik tepat di area kotak wajah.', true);
+      const known = f.name && f.name !== 'Unknown';
+      const res = await askModal({
+        title: 'Daftarkan wajah',
+        desc: (known ? `Saat ini dikenali sebagai "${f.name}". Tambahkan contoh baru untuk akurasi lebih baik.` : 'Wajah ini belum dikenal.') + ` (ID pelacakan #${f.id})`,
+        fields: [{ id: 'name', label: 'Nama', value: known ? f.name : '', required: true, maxLength: 60 }]
+      });
+      if (!res || !res.name.trim()) return;
+      const fd = new FormData();
+      fd.append('x', p.x); fd.append('y', p.y); fd.append('name', res.name.trim());
+      const data = await api('/register_face', { method: 'POST', body: fd });
+      toast(data.message, data.status !== 'success');
+      loadFaces();
+    } catch (err) { toast(err.message, true); }
+  }
+
+  // ---------------------------------------------------------------- wajah terdaftar
+  let faces = [];
+  async function loadFaces() {
+    try {
+      faces = (await api('/api/faces')).faces;
+      const box = $('#faces-list');
+      if (!faces.length) { box.innerHTML = '<div class="empty">Belum ada wajah terdaftar.</div>'; return; }
+      box.innerHTML = faces.map((f, i) => `
+        <div class="line-row">
+          <span class="nm" title="${esc(f.name)}">${esc(f.name)} <span class="tag">· ${f.samples} contoh</span></span>
+          <span class="act">
+            <button class="btn sm" data-face-rename="${i}">Ubah nama</button>
+            <button class="btn sm danger" data-face-del="${i}" aria-label="Hapus ${esc(f.name)}">Hapus</button>
+          </span>
+        </div>`).join('');
+    } catch (_) {}
+  }
+  $('#faces-list').addEventListener('click', async e => {
+    const ren = e.target.closest('[data-face-rename]'), del = e.target.closest('[data-face-del]');
+    try {
+      if (ren) {
+        const f = faces[+ren.dataset.faceRename];
+        const res = await askModal({ title: 'Ubah nama', desc: 'Nama pada riwayat log orang ikut diperbarui. Jika nama baru sudah ada, kedua wajah digabung.',
+          fields: [{ id: 'name', label: 'Nama baru', value: f.name, required: true, maxLength: 60 }] });
+        if (!res || !res.name.trim() || res.name.trim() === f.name) return;
+        await sendJSON('POST', '/api/faces/rename', { name: f.name, new_name: res.name.trim() });
+        toast('Nama diperbarui.');
+      } else if (del) {
+        const f = faces[+del.dataset.faceDel];
+        const ok = await askModal({ title: `Hapus "${f.name}"?`, desc: 'Wajah ini tidak akan dikenali lagi dan akan tampil sebagai Unknown. Riwayat log tidak dihapus.', confirmText: 'Hapus', danger: true });
+        if (!ok) return;
+        await sendJSON('POST', '/api/faces/delete', { name: f.name });
+        toast('Wajah dihapus.');
+      } else return;
+      loadFaces(); loadLog(true); refreshStats();
+    } catch (err) { toast(err.message, true); }
+  });
+
+  // ---------------------------------------------------------------- daftar garis
+  async function loadLines() {
+    try {
+      lines = (await api('/api/lines')).lines;
+      const box = $('#lines-list');
+      if (!lines.length) { box.innerHTML = '<div class="empty">Belum ada garis. Tanpa garis, kendaraan tidak dihitung.</div>'; return; }
+      box.innerHTML = lines.map(l => `
+        <div class="line-row">
+          <span class="nm" title="${esc(l.name)}">${esc(l.name)}</span>
+          <span class="act">
+            <button class="btn sm" data-flip="${l.id}" title="Tukar arah masuk/keluar">⇄ Balik arah</button>
+            <button class="btn sm danger" data-del-line="${l.id}" aria-label="Hapus garis ${esc(l.name)}">Hapus</button>
+          </span>
+        </div>`).join('');
+    } catch (_) {}
+  }
+  $('#lines-list').addEventListener('click', async e => {
+    const flip = e.target.closest('[data-flip]'), del = e.target.closest('[data-del-line]');
+    try {
+      if (flip) { await sendJSON('POST', `/api/lines/${flip.dataset.flip}/flip`); toast('Arah masuk dibalik.'); }
+      else if (del) {
+        const l = lines.find(x => String(x.id) === del.dataset.delLine);
+        const ok = await askModal({ title: 'Hapus garis?', desc: `Garis "${l ? l.name : ''}" akan dihapus. Log yang sudah tercatat tetap ada.`, confirmText: 'Hapus', danger: true });
+        if (!ok) return;
+        await sendJSON('DELETE', `/api/lines/${del.dataset.delLine}`);
+      } else return;
+      loadLines();
+    } catch (err) { toast(err.message, true); }
+  });
+
+  // ---------------------------------------------------------------- input manual
+  let manualDir = 'masuk';
+  segGroup($('#seg-manual-dir'), v => { manualDir = v; });
+  const cnt = $('#manual-form [name=count]');
+  $('#cnt-minus').onclick = () => { cnt.value = Math.max(1, (+cnt.value || 1) - 1); };
+  $('#cnt-plus').onclick = () => { cnt.value = Math.min(9999, (+cnt.value || 0) + 1); };
+  $('#manual-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = e.target.elements;
+    try {
+      await sendJSON('POST', '/api/manual', {
+        vehicle_type: f.vehicle_type.value, direction: manualDir, count: +f.count.value || 1,
+        plate: f.plate.value, note: f.note.value
+      });
+      toast(`${f.count.value} ${f.vehicle_type.value} (${manualDir}) dicatat.`);
+      f.plate.value = ''; f.note.value = ''; cnt.value = 1;
+      refreshAll(true);
+    } catch (err) { toast(err.message, true); }
+  });
+
+  // ---------------------------------------------------------------- log
+  const filters = { category: 'all', vehicle_type: 'all', direction: 'all', sort: 'newest', search: '', date_from: '', date_to: '' };
+  let limit = 100, lastSig = '';
+
+  function queryString(extra = {}) {
+    const p = new URLSearchParams();
+    Object.entries({ ...filters, ...extra }).forEach(([k, v]) => { if (v && v !== 'all') p.set(k, v); });
+    return p.toString();
+  }
+  function syncFilterUI() {
+    $('#g-vtype').hidden = filters.category !== 'vehicle';
+    $('#g-dir').hidden = filters.category === 'person';
+    $('#export').href = '/api/events.csv?' + queryString();
+    const clr = $('#clear-log');
+    clr.hidden = filters.category === 'all';
+    clr.textContent = filters.category === 'person' ? 'Hapus semua log Orang' : 'Hapus semua log Kendaraan';
+  }
+  $('#clear-log').addEventListener('click', async () => {
+    const label = filters.category === 'person' ? 'Orang' : 'Kendaraan';
+    const ok = await askModal({ title: `Hapus semua log ${label}?`, desc: `Seluruh riwayat ${label.toLowerCase()} (bukan hanya yang tampil saat ini) akan dihapus permanen.`, confirmText: 'Hapus semua', danger: true });
+    if (!ok) return;
+    try {
+      const r = await sendJSON('POST', '/api/events/clear', { category: filters.category });
+      toast(`${r.deleted} log dihapus.`);
+      refreshAll(true);
+    } catch (err) { toast(err.message, true); }
+  });
+  $$('.filters .seg').forEach(root => segGroup(root, v => {
+    const key = root.dataset.key;
+    filters[key] = v;
+    if (key === 'category') {
+      if (v !== 'vehicle') { filters.vehicle_type = 'all'; setSeg($('#g-vtype .seg'), 'all'); }
+      if (v === 'person') { filters.direction = 'all'; setSeg($('#g-dir .seg'), 'all'); }
+    }
+    limit = 100; syncFilterUI(); loadLog(true);
+  }));
+  ['f-from', 'f-to'].forEach(id => $('#' + id).addEventListener('change', e => {
+    filters[id === 'f-from' ? 'date_from' : 'date_to'] = e.target.value; limit = 100; syncFilterUI(); loadLog(true);
+  }));
+  let searchTimer;
+  $('#f-search').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { filters.search = e.target.value.trim(); limit = 100; syncFilterUI(); loadLog(true); }, 300);
+  });
+  $('#more').onclick = () => { limit += 100; loadLog(true); };
+
+  const fmtDate = d => { const [y, m, dd] = d.split('-'); return `${dd} ${MONTHS[+m - 1]} ${y}`; };
+
+  function rowHtml(e) {
+    const [d, t] = e.ts.split(' ');
+    const veh = e.category === 'vehicle';
+    const type = veh ? '<span class="badge">Kendaraan</span>' : '<span class="badge">Orang</span>';
+    const icon = e.label === 'Mobil' ? '🚗 ' : e.label === 'Motor' ? '🏍️ ' : '';
+    const idTag = e.track_id != null ? ` <span class="tag id" title="ID pelacakan">#${e.track_id}</span>` : '';
+    const name = veh
+      ? `${icon}${esc(e.label)}${e.count > 1 ? ` <span class="tag">× ${e.count}</span>` : ''}${idTag}`
+      : `<span class="${e.label === 'Unknown' ? 'unknown' : ''}">${esc(e.label)}</span>${idTag}`;
+    const dir = e.direction ? `<span class="badge ${e.direction}">${e.direction === 'masuk' ? '↓ Masuk' : '↑ Keluar'}</span>` : '<span class="muted">—</span>';
+    const unk = !e.plate || e.plate === '???';
+    const plate = veh ? `<button class="plate ${unk ? 'unk' : ''}" data-plate="${e.id}" title="Klik untuk mengubah plat">${esc(e.plate || '???')}</button>` : '<span class="muted">—</span>';
+    const src = e.source === 'manual' ? `<span class="tag manual" title="${esc(e.note || '')}">Manual${e.note ? ' · ' + esc(e.note) : ''}</span>` : '<span class="tag">Otomatis</span>';
+    return `<tr>
+      <td class="dt"><div class="d">${fmtDate(d)}</div><div class="t">${t}</div></td>
+      <td>${type}</td><td>${name}</td><td>${dir}</td><td>${plate}</td>
+      <td>${esc(e.line_name || '—')}</td><td>${src}</td>
+      <td><button class="btn sm danger" data-del="${e.id}" aria-label="Hapus log">✕</button></td></tr>`;
+  }
+
+  let reqId = 0;
+  async function loadLog(force = false) {
+    const my = ++reqId;
+    try {
+      const data = await api('/api/events?' + queryString({ limit }));
+      if (my !== reqId) return;   // ada permintaan yang lebih baru, abaikan yang ini
+      const sig = JSON.stringify(data);
+      if (force || sig !== lastSig) {
+        lastSig = sig;
+        $('#log-body').innerHTML = data.events.length
+          ? data.events.map(rowHtml).join('')
+          : '<tr><td colspan="8" class="empty" style="text-align:center;padding:32px">Belum ada log yang cocok dengan filter.</td></tr>';
+        $('#log-count').textContent = `Menampilkan ${data.events.length} dari ${data.total} entri`;
+        $('#more').hidden = data.events.length >= data.total;
+      }
+    } catch (_) {}
+  }
+  $('#log-body').addEventListener('click', async e => {
+    const pl = e.target.closest('[data-plate]'), del = e.target.closest('[data-del]');
+    try {
+      if (pl) {
+        const cur = pl.textContent.trim();
+        const res = await askModal({ title: 'Ubah plat nomor', desc: 'Kosongkan untuk mengembalikan ke ???.',
+          fields: [{ id: 'plate', label: 'Plat nomor', value: cur === '???' ? '' : cur, maxLength: 12, placeholder: 'B 1234 ABC' }] });
+        if (!res) return;
+        await sendJSON('PATCH', `/api/events/${pl.dataset.plate}/plate`, { plate: res.plate });
+        toast('Plat diperbarui.');
+      } else if (del) {
+        const ok = await askModal({ title: 'Hapus log ini?', desc: 'Entri akan dihapus permanen dari riwayat.', confirmText: 'Hapus', danger: true });
+        if (!ok) return;
+        await sendJSON('DELETE', `/api/events/${del.dataset.del}`);
+        toast('Log dihapus.');
+      } else return;
+      refreshAll(true);
+    } catch (err) { toast(err.message, true); }
+  });
+
+  // ================================================================ PENGATURAN
+  const drawer = $('#drawer');
+  const BRANDS = [
+    { id: 'custom',   label: 'Tempel link lengkap / lainnya', scheme: 'rtsp', port: 554,  path: '' },
+    { id: 'hik',      label: 'Hikvision (RTSP)',              scheme: 'rtsp', port: 554,  path: '/Streaming/Channels/102' },
+    { id: 'dahua',    label: 'Dahua / Imou (RTSP)',           scheme: 'rtsp', port: 554,  path: '/cam/realmonitor?channel=1&subtype=1' },
+    { id: 'tapo',     label: 'TP-Link Tapo (RTSP)',           scheme: 'rtsp', port: 554,  path: '/stream2' },
+    { id: 'rtsp',     label: 'RTSP umum / ONVIF',             scheme: 'rtsp', port: 554,  path: '/stream1' },
+    { id: 'ipwebcam', label: 'HP Android: IP Webcam',         scheme: 'http', port: 8080, path: '/video' },
+    { id: 'droidcam', label: 'HP: DroidCam (Wi-Fi)',          scheme: 'http', port: 4747, path: '/video' },
+  ];
+  fillSelect($('#cam-brand'), BRANDS.map(b => [b.id, b.label]), 'custom');
+
+  function openSettings() { drawer.hidden = false; showTab(activeTab); loadSettings(); }
+  function closeSettings() { drawer.hidden = true; }
+  $('#btn-settings').onclick = () => (drawer.hidden ? openSettings() : closeSettings());
+  $('#drawer-close').onclick = closeSettings;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hidden && !$('#modal').open) closeSettings(); });
+
+  function showTab(t) {
+    activeTab = t;
+    setSeg($('#seg-tab'), t);
+    $$('.tab').forEach(s => { s.hidden = s.id !== 'tab-' + t; });
+    if (t === 'device') loadSystem();
+  }
+  segGroup($('#seg-tab'), showTab);
+
+  async function loadSettings() {
+    try {
+      const d = await api('/api/settings');
+      S = d.settings; CH = d.choices; PRESETS = d.presets;
+      renderSettings();
+    } catch (err) { toast('Gagal memuat pengaturan: ' + err.message, true); }
+  }
+
+  async function saveSettings(patch, okMsg) {
+    try {
+      const d = await sendJSON('POST', '/api/settings', patch);
+      S = d.settings; CH = d.choices; PRESETS = d.presets;
+      renderSettings();
+      if (okMsg) toast(okMsg);
+      refreshStatus();
+      return true;
+    } catch (err) { toast(err.message, true); return false; }
+  }
+
+  function renderSettings() {
+    renderCamera(); renderQuality();
+    $$('[data-device]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.device === S.device)));
+    $$('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === S.view)));
+    updateHint();
+  }
+
+  // ---------- Kamera ----------
+  function showCamType() {
+    $$('[data-cam-type]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.camType === camType)));
+    $('#cam-usb').hidden = camType !== 'usb';
+    $('#cam-ip').hidden = camType !== 'ip';
+  }
+  $$('[data-cam-type]').forEach(b => b.onclick = () => { camType = b.dataset.camType; showCamType(); });
+
+  function renderCamera() {
+    const c = S.camera;
+    camType = c.type;
+    showCamType();
+    const idx = [...new Set([0, 1, 2, 3, 4, 5, c.index])].sort((a, b) => a - b);
+    fillSelect($('#cam-index'), idx.map(i => [String(i), `Nomor ${i}${i === 0 ? ' (biasanya webcam bawaan)' : ''}`]), c.index);
+    $('#cam-backend').value = c.backend;
+    $('#cam-backend-wrap').hidden = !CH.windows;
+    $('#cam-brand').value = 'custom';
+    $('#cam-address').value = c.address || '';
+    $('#cam-scheme').value = c.scheme || 'rtsp';
+    $('#cam-port').value = c.port || '';
+    $('#cam-path').value = c.path || '';
+    $('#cam-user').value = c.username || '';
+    const pw = $('#cam-pass');
+    pw.value = '';
+    pw.placeholder = c.password_set ? 'Tersimpan (kosongkan jika tidak diubah)' : 'Kosongkan jika tanpa password';
+    $('#cam-nopass').checked = false;
+  }
+
+  $('#cam-brand').addEventListener('change', e => {
+    const b = BRANDS.find(x => x.id === e.target.value);
+    if (!b || b.id === 'custom') return;
+    $('#cam-scheme').value = b.scheme; $('#cam-port').value = b.port; $('#cam-path').value = b.path;
+  });
+
+  function camPatch() {
+    const p = {
+      type: camType,
+      index: +$('#cam-index').value || 0,
+      backend: $('#cam-backend').value,
+      scheme: $('#cam-scheme').value,
+      address: $('#cam-address').value.trim(),
+      port: $('#cam-port').value.trim(),
+      path: $('#cam-path').value.trim(),
+      username: $('#cam-user').value.trim(),
+    };
+    const pw = $('#cam-pass').value;
+    if ($('#cam-nopass').checked) p.clear_password = true;
+    else if (pw) p.password = pw;
+    return p;
+  }
+  function setCamResult(msg, cls) { const el = $('#cam-result'); el.textContent = msg; el.className = 'note' + (cls ? ' ' + cls : ''); }
+
+  $('#cam-scan').onclick = async () => {
+    const btn = $('#cam-scan');
+    btn.disabled = true; btn.textContent = 'Memindai…';
+    setCamResult('Memindai kamera… bisa memakan beberapa detik.', '');
+    try {
+      const d = await api('/api/camera/scan?backend=' + encodeURIComponent($('#cam-backend').value));
+      if (!d.devices.length) {
+        setCamResult('Tidak ada kamera lokal ditemukan. Pastikan kamera terpasang dan tidak dipakai aplikasi lain.', 'err');
+      } else {
+        const cur = $('#cam-index').value;
+        fillSelect($('#cam-index'), d.devices.map(v => [String(v.index),
+          v.state === 'busy' ? `Nomor ${v.index} · sedang dipakai aplikasi` : `Nomor ${v.index} · ${v.width}×${v.height}`]));
+        $('#cam-index').value = d.devices.some(v => String(v.index) === cur) ? cur : String(d.devices[0].index);
+        setCamResult(`Ditemukan ${d.devices.length} kamera. Pilih nomornya lalu tekan Simpan & hubungkan.`, 'ok');
+      }
+    } catch (err) { setCamResult(err.message, 'err'); }
+    finally { btn.disabled = false; btn.textContent = 'Pindai kamera'; }
+  };
+
+  $('#cam-test').onclick = async () => {
+    const btn = $('#cam-test');
+    btn.disabled = true;
+    setCamResult('Menguji koneksi… bisa memakan beberapa detik.', '');
+    try {
+      const r = await sendJSON('POST', '/api/camera/test', { camera: camPatch() });
+      setCamResult(r.message, r.ok ? 'ok' : 'err');
+    } catch (err) { setCamResult(err.message, 'err'); }
+    finally { btn.disabled = false; }
+  };
+
+  $('#cam-save').onclick = async () => {
+    const btn = $('#cam-save');
+    btn.disabled = true;
+    try {
+      if (await saveSettings({ camera: camPatch() })) {
+        setCamResult('Tersimpan. Menghubungkan ke kamera… lihat status di bagian atas halaman.', 'ok');
+      } else setCamResult('Gagal menyimpan. Periksa isian di atas.', 'err');
+    } finally { btn.disabled = false; }
+  };
+
+  // ---------- Kualitas ----------
+  const resKey = (w, h) => `${w}x${h}`;
+  const SENS = [['#q-vsens', '#o-vsens'], ['#q-fsens', '#o-fsens'], ['#q-match', '#o-match']];
+  SENS.forEach(([r, o]) => $(r).addEventListener('input', () => { $(o).textContent = $(r).value; markCustom(); }));
+
+  function syncAutoLock() {
+    const auto = qPreset === 'auto';
+    $('#q-yolo').disabled = auto; $('#q-face').disabled = auto;
+    $('#q-auto-note').hidden = !auto;
+  }
+  function markCustom() {
+    if (qPreset === 'kustom') return;
+    qPreset = 'kustom'; setSeg($('#seg-preset'), 'kustom'); syncAutoLock();
+  }
+  function fillQualityForm(q) {
+    fillSelect($('#q-res'), CH.resolutions.map(([w, h]) => [resKey(w, h), w ? `${w} × ${h}` : 'Asli kamera']), resKey(q.width, q.height));
+    fillSelect($('#q-fps'), CH.fps.map(f => [String(f), f ? `${f} FPS` : 'Maksimal (tanpa batas)']), q.fps);
+    fillSelect($('#q-yolo'), CH.yolo.map(v => [String(v), `${v} px${v === 320 ? ' (cepat)' : v === 640 ? ' (paling akurat)' : ''}`]), q.yolo_imgsz);
+    fillSelect($('#q-face'), CH.face_every.map(v => [String(v), v === 1 ? 'Setiap siklus (paling teliti)' : `Tiap ${v} siklus`]), q.face_every);
+    $('#q-vsens').value = q.vehicle_sens; $('#o-vsens').textContent = q.vehicle_sens;
+    $('#q-fsens').value = q.face_sens;    $('#o-fsens').textContent = q.face_sens;
+  }
+  function renderQuality() {
+    const q = S.quality;
+    qPreset = q.preset;
+    fillQualityForm(q);
+    $('#q-match').value = q.match_level; $('#o-match').textContent = q.match_level;
+    setSeg($('#seg-preset'), qPreset);
+    syncAutoLock();
+  }
+  segGroup($('#seg-preset'), v => {
+    qPreset = v;
+    if (v !== 'kustom' && PRESETS[v]) fillQualityForm(PRESETS[v]);
+    syncAutoLock();
+  });
+  ['#q-res', '#q-fps', '#q-yolo', '#q-face'].forEach(id => $(id).addEventListener('change', markCustom));
+
+  $('#q-apply').onclick = async () => {
+    const [w, h] = $('#q-res').value.split('x').map(Number);
+    const q = {
+      preset: qPreset, width: w, height: h, fps: +$('#q-fps').value,
+      yolo_imgsz: +$('#q-yolo').value, face_every: +$('#q-face').value,
+      vehicle_sens: +$('#q-vsens').value, face_sens: +$('#q-fsens').value, match_level: +$('#q-match').value,
+    };
+    await saveSettings({ quality: q }, 'Pengaturan kualitas diterapkan.');
+  };
+
+  // ---------- Perangkat ----------
+  $$('[data-device]').forEach(b => b.onclick = async () => {
+    if (await saveSettings({ device: b.dataset.device }, 'Perangkat pemrosesan diperbarui.')) loadSystem();
+  });
+  async function loadSystem() {
+    try {
+      const s = await api('/api/system');
+      const rows = [
+        ['Memproses dengan', s.device_active],
+        ['GPU NVIDIA (CUDA)', s.cuda ? `Ada: ${s.gpu_name}` : 'Tidak terdeteksi'],
+        ['PyTorch', `${s.torch}${s.torch_cuda_build ? ' (CUDA ' + s.torch_cuda_build + ')' : ' (versi CPU)'}`],
+        ['Pengenalan nama (dlib)', s.dlib_cuda ? 'GPU' : 'CPU'],
+        ['Deteksi lokasi wajah', s.face_detector],
+        ['Jumlah core CPU', s.cpu_count],
+        ['OpenCV', s.opencv],
+      ];
+      let html = rows.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
+      html += '<p class="note">GPU mempercepat deteksi kendaraan (YOLO). Pengenalan nama wajah memakai dlib dan hanya memakai GPU bila dlib dipasang versi CUDA.</p>';
+      if (!s.cuda && !s.torch_cuda_build) {
+        html += '<p class="note">PyTorch di komputer ini versi CPU. Untuk memakai GPU NVIDIA, pasang PyTorch versi CUDA dari pytorch.org lalu jalankan ulang aplikasi.</p>';
+      }
+      $('#sys-info').innerHTML = html;
+    } catch (_) {}
+  }
+
+  // ---------- Tampilan ----------
+  $$('[data-view]').forEach(b => b.onclick = () => saveSettings({ view: b.dataset.view }));
+
+  // ---------------------------------------------------------------- polling
+  function refreshAll(force = false) { loadLog(force); refreshStats(); }
+  syncFilterUI();
+  loadLines(); loadFaces(); refreshStatus(); refreshAll(true);
+  loadSettings();
+  setInterval(() => { if (!document.hidden) refreshStatus(); }, 2500);
+  setInterval(() => { if (!document.hidden && $('#auto').checked && !$('#modal').open) refreshAll(); }, 2500);
+})();
+</script>
+</body>
+</html>
