@@ -1,6 +1,6 @@
 # CCTV AI Analytics System
 
-Sistem analitik CCTV berbasis Artificial Intelligence untuk menghitung jumlah kendaraan (mobil & motor) dan mendeteksi wajah 3secara real-time. Dibangun menggunakan arsitektur backend FastAPI dan algoritma Computer Vision.
+Sistem analitik CCTV berbasis Artificial Intelligence untuk menghitung jumlah kendaraan (mobil & motor) dan mendeteksi wajah secara real-time. Dibangun menggunakan arsitektur backend FastAPI dan algoritma Computer Vision.
 
 ## 🚀 Fitur Utama
 * **Vehicle Counting (Hitbox):** Menghitung jumlah mobil dan motor yang masuk/keluar melewati garis batas virtual menggunakan model **YOLOv8**.
